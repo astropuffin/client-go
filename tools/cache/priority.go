@@ -171,6 +171,13 @@ func (pq PriorityQueue) Swap(i, j int) {
 // adds an item to the queue. Used by the heap function. Do not use this
 // outside heap.Push!
 func (pq *PriorityQueue) Push(obj interface{}) {
+	rateLimit, err := MetaRateLimitFunc(obj)
+	if err != nil {
+		glog.V(4).Info(err)
+	}
+	if rateLimit {
+		return
+	}
 	key, _ := pq.keyFunc(obj)
 	priority, _ := MetaPriorityFunc(obj)
 	n := pq.Len()
@@ -461,9 +468,8 @@ func (p *Priority) addIfNotPresent(key string, obj interface{}) {
 	p.cond.Broadcast()
 }
 
-
 // Helper Functions
-const annotationKey = "k8s_priority"
+const priorityAnnotationKey = "dronedeploy.com/priority"
 
 // MetaPriorityFunc
 // extracts the priority annotation of an object
@@ -479,7 +485,7 @@ func MetaPriorityFunc(obj interface{}) (int, error) {
 	if annotations == nil {
 		return -1, fmt.Errorf("object does not have annotations")
 	}
-	if p, ok := annotations[annotationKey]; ok {
+	if p, ok := annotations[priorityAnnotationKey]; ok {
 		glog.V(4).Infof("priority annotation: '%v'", p)
 		priority, err := strconv.Atoi(p)
 		if err != nil {
@@ -488,6 +494,31 @@ func MetaPriorityFunc(obj interface{}) (int, error) {
 		return priority, nil
 	}
 	return -1, nil
+}
+
+const rateLimitAnnotationKey = "dronedeploy.com/rateLimit"
+
+// MetaRateLimitFunc
+// extracts the rateLimit annotation of an object.
+// defaults to false (not rate limited)
+// The object must be a pointer of a valid API type
+// TODO: make this allow non-pod objects
+func MetaRateLimitFunc(obj interface{}) (bool, error) {
+	thing, err := meta.Accessor(obj)
+	if err != nil {
+		return false, fmt.Errorf("object has no meta: %v", err)
+	}
+	annotations := thing.GetAnnotations()
+	if annotations == nil {
+		return false, fmt.Errorf("object does not have annotations")
+	}
+	if rl, ok := annotations[rateLimitAnnotationKey]; ok {
+		glog.V(4).Infof("rateLimit annotation: '%v'", p)
+		if rl == "true" {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // There are a number of objects pulled from other files in the package. Here
