@@ -171,6 +171,7 @@ func (pq PriorityQueue) Swap(i, j int) {
 // adds an item to the queue. Used by the heap function. Do not use this
 // outside heap.Push!
 func (pq *PriorityQueue) Push(obj interface{}) {
+	glog.V(4).Info("priority push")
 	rateLimit, err := MetaRateLimitFunc(obj)
 	if err != nil {
 		glog.V(4).Info(err)
