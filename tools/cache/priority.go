@@ -175,6 +175,7 @@ func (pq *PriorityQueue) Push(obj interface{}) {
 	if err != nil {
 		glog.V(4).Info(err)
 	}
+	glog.V(4).Infof("ratelimited?: %v", rateLimit)
 	if rateLimit {
 		return
 	}
